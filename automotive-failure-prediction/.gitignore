@@ -7,7 +7,6 @@ venv/
 ENV/
 env/
 *.env
-*.pkl
 *.h5
 *.db
 *.sqlite
