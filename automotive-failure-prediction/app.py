@@ -1,5 +1,6 @@
 import pickle
 from pathlib import Path
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -61,17 +62,30 @@ def main():
     try:
         model, scaler = load_model_and_scaler()
         scaled_input = scaler.transform(input_df)
-        probability = model.predict_proba(scaled_input)[0][1]
+        scaled_input = np.asarray(scaled_input, dtype=float)
+
+        try:
+            probability = model.predict_proba(scaled_input)[0][1]
+        except Exception:
+            probability = None
+
         prediction = model.predict(scaled_input)[0]
     except FileNotFoundError:
         st.error("Model files are missing. Run the training script first to generate model.pkl and scaler.pkl.")
+        return
+    except Exception as exc:
+        st.error("Unexpected model error: please retrain the model locally and redeploy.")
+        st.write(exc)
         return
 
     result_text = "FAIL" if prediction == 1 else "HEALTHY"
     result_color = "red" if prediction == 1 else "green"
 
     st.markdown("### Prediction result")
-    st.metric(label="Vehicle Condition", value=result_text, delta=f"{probability * 100:.1f}% failure confidence")
+    if probability is not None:
+        st.metric(label="Vehicle Condition", value=result_text, delta=f"{probability * 100:.1f}% failure confidence")
+    else:
+        st.metric(label="Vehicle Condition", value=result_text, delta="Failure confidence unavailable")
 
     st.markdown("### Failure probability")
     st.progress(min(max(probability, 0.0), 1.0))
